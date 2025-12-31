@@ -1,0 +1,82 @@
+{
+    "compilerOptions": {
+        "target": "ESNext",
+        "module": "CommonJS",
+        "baseUrl": "./",
+        "paths": {
+            "@core": [
+                "./lib/core"
+            ],
+            "@core/*": [
+                "./lib/core/*"
+            ],
+            "@utils": [
+                "./lib/utils"
+            ],
+            "@utils/*": [
+                "./lib/utils/*"
+            ],
+            "@playwrightUtils": [
+                "./lib/utils/playwrightUtils"
+            ],
+            "@playwrightUtils/*": [
+                "./lib/utils/playwrightUtils/*"
+            ],
+            "@wdioUtils": [
+                "./lib/utils/wdioUtils"
+            ],
+            "@wdioUtils/*": [
+                "./lib/utils/wdioUtils/*"
+            ],
+            "@provider": [
+                "./lib/utils/provider"
+            ],
+            "@provider/*": [
+                "./lib/utils/provider/*"
+            ],
+            "@config": [
+                "./config"
+            ],
+            "@config/*": [
+                "./config/*"
+            ],
+            "@support": [
+                "./support"
+            ],
+            "@support/*": [
+                "./support/*"
+            ],
+            "@tests": [
+                "./tests"
+            ],
+            "@tests/*": [
+                "./tests/*"
+            ],
+            "@resources": [
+                "./resources"
+            ],
+            "@resources/*": [
+                "./resources/*"
+            ]
+        },
+        "types": [
+            "node",
+            "typescript",
+            "playwright",
+            "playwright-core",
+            "@playwright/test",
+            "webdriverio",
+            "@wdio/mocha-framework",
+            "@wdio/globals/types",
+            "@wdio/protocols",
+            "wdio-intercept-service",
+            "@wdio/lighthouse-service",
+        ],
+        "resolveJsonModule": true,
+        "noEmit": true,
+        "esModuleInterop": true,
+        "forceConsistentCasingInFileNames": true,
+        "strict": true,
+        "skipLibCheck": true,
+    }
+}
