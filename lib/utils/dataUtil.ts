@@ -2,6 +2,7 @@ import { merge } from 'lodash';
 import { parse, unparse } from 'papaparse';
 import path from 'node:path';
 import PropertiesReader from 'properties-reader';
+import * as yaml from 'js-yaml';
 import { FileUtil, IDataUtil, IFileUtil, ILogUtil } from './index';
 import {
   CoreLibrary,
@@ -43,9 +44,16 @@ export class DataUtil implements IDataUtil {
       this.paths.sanitizeDirectory(this.props.testDataPath),
     );
 
-    const dataFiles: string[] = this.files.getAllFilePaths(cleanPath, 'csv');
-    for (const dataFile of dataFiles) {
-      allData = new Map([...allData, ...this.setData(dataFile)]);
+    // Load CSV files (backward compatible)
+    const csvFiles: string[] = this.files.getAllFilePaths(cleanPath, 'csv');
+    for (const csvFile of csvFiles) {
+      allData = new Map([...allData, ...this.setData(csvFile)]);
+    }
+
+    // Load YAML files (new)
+    const yamlFiles: string[] = this.files.getAllFilePaths(cleanPath, 'yaml');
+    for (const yamlFile of yamlFiles) {
+      allData = new Map([...allData, ...this.setDataFromYAML(yamlFile)]);
     }
 
     CoreMaps._allData = allData;
@@ -103,6 +111,77 @@ export class DataUtil implements IDataUtil {
     return subMap;
   }
 
+  /**
+   * Parse YAML file và convert to Map structure (compatible với existing CSV format)
+   * 
+   * YAML Structure:
+   *   testData:
+   *     testName:
+   *       DATAKEY:
+   *         field1: value1
+   *         field2: value2
+   * 
+   * Converts to Map:
+   *   Map {
+   *     "fileName.testName.DATAKEY" => Map {
+   *       "field1" => "value1",
+   *       "field2" => "value2"
+   *     }
+   *   }
+   * 
+   * Note: YAML format is "fileName.testName.DATAKEY" (no [iter] like CSV)
+   * CSV format is "fileName[iter].testName.DATAKEY" (with iteration number)
+   * Both formats work with setTestData() because it uses endsWith() matching
+   */
+  private setDataFromYAML(yamlFile: string): Map<string, any> {
+    const fileContent = this.files.getFileContent(yamlFile);
+    if (!fileContent) {
+      this.log.warning(`YAML file is empty: ${yamlFile}`);
+      return new Map();
+    }
+
+    let yamlData: any;
+    try {
+      yamlData = yaml.load(fileContent);
+    } catch (error: any) {
+      this.log.err(`Failed to parse YAML file: ${yamlFile}. ${error.message}`);
+      throw new Error(`Invalid YAML file: ${yamlFile}. ${error.message}`);
+    }
+
+    const fileName = this.files.getFileNameFromPath(yamlFile, false);
+    const subMap = new Map();
+
+    // Parse YAML structure: testData -> testName -> dataKey -> fields
+    if (!yamlData || !yamlData.testData) {
+      this.log.warning(`YAML file missing 'testData' key: ${yamlFile}. Skipping.`);
+      return new Map();
+    }
+
+    Object.entries(yamlData.testData).forEach(([testName, testConfig]: [string, any]) => {
+      if (testConfig && typeof testConfig === 'object') {
+        Object.entries(testConfig).forEach(([dataKey, fields]: [string, any]) => {
+          // Match DATAKEY from environment (use this.process.DATAKEY for consistency)
+          if (this.process.DATAKEY?.trim() === dataKey) {
+            const index = `${fileName}.${testName}.${dataKey}`;
+            const dataSet = new Map();
+            
+            // Convert fields object to Map
+            if (fields && typeof fields === 'object') {
+              Object.entries(fields).forEach(([key, value]) => {
+                // Handle complex values (preserve types: strings, numbers, booleans, arrays, objects)
+                dataSet.set(key, value);
+              });
+            }
+            
+            subMap.set(index, dataSet);
+          }
+        });
+      }
+    });
+
+    return subMap;
+  }
+
   public async setTestData(
     testName: string,
     iteration?: number,
@@ -149,15 +228,43 @@ export class DataUtil implements IDataUtil {
     return iterationCount;
   }
 
-  public async get(key: string | string[]): Promise<string | null> {
-    let keyValue: string | null = typeof key === 'string' ? key : key[0];
+  /**
+   * Get value from test data by key
+   * 
+   * Supports multiple value types:
+   * - string: Returns trimmed string (backward compatible)
+   * - number: Returns number as-is
+   * - boolean: Returns boolean as-is
+   * - array: Returns array as-is
+   * - object: Returns object as-is
+   * - null/undefined: Returns null
+   * 
+   * For string values, also handles:
+   * - Data provider patterns (e.g., [NUM#...])
+   * - Bracket trimming ([...] -> ...)
+   * 
+   * @param key - Key to lookup in test data
+   * @returns Value from test data (preserves original type)
+   */
+  public async get(key: string | string[]): Promise<any> {
+    const keyStr = typeof key === 'string' ? key : key[0];
+    let keyValue: any = keyStr;
 
-    if (CoreMaps._testData.has(keyValue))
-      keyValue = await CoreMaps._testData.get(keyValue);
+    // Get value from test data Map
+    if (CoreMaps._testData.has(keyStr)) {
+      keyValue = CoreMaps._testData.get(keyStr);
+    }
 
-    if (keyValue !== null) {
+    // Handle null/undefined
+    if (keyValue === null || keyValue === undefined) {
+      return null;
+    }
+
+    // String-specific processing (backward compatible)
+    if (typeof keyValue === 'string') {
       keyValue = keyValue.trim();
 
+      // Handle bracket patterns (e.g., [NUM#...])
       if (keyValue.includes('[') || keyValue.includes(']')) {
         if (keyValue.startsWith('[')) {
           keyValue = keyValue.substring(1, keyValue.length);
@@ -166,14 +273,18 @@ export class DataUtil implements IDataUtil {
           keyValue = keyValue.substring(0, keyValue.length - 1);
         }
       }
+
+      // Handle data provider patterns (e.g., NUM#100#999)
+      if (await this.isDataType(keyValue)) {
+        const providerFactory = new DataProviderFactory();
+        const provider = providerFactory.getDataProvider(keyValue);
+        keyValue = provider.get();
+      }
+
+      return keyValue;
     }
 
-    if (keyValue !== null && (await this.isDataType(keyValue))) {
-      const providerFactory = new DataProviderFactory();
-      const provider = providerFactory.getDataProvider(keyValue);
-      keyValue = provider.get();
-    }
-
+    // For non-string types (number, boolean, array, object), return as-is
     return keyValue;
   }
 

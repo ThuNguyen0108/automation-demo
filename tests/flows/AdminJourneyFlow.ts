@@ -1,28 +1,14 @@
-/**
- * AdminJourneyFlow - Fluent Interface Pattern for Admin Journey Tests
- * 
- * This flow provides a fluent API for composing admin journey test steps.
- * Each method returns `this` to enable method chaining.
- * 
- * Features:
- * - ✅ Integrates with testStep for Allure and Playwright reporting
- * - ✅ Automatic state management
- * - ✅ Easy to compose flows
- * - ✅ Type-safe
- */
-
 import { Page } from '@playwright/test';
 import { PlaywrightInstance } from '@core';
 import { testStep } from '@playwrightUtils';
-import { LoginPage } from '../pages/LoginPage';
+import { BaseFlow } from './BaseFlow';
+import { SessionConfig, TwoFAOptions } from '@support/contextSupport';
 import { PersonsPage } from '../pages/PersonsPage';
 import { AssignPage } from '../pages/AssignPage';
 import { PersonDetailsPage } from '../pages/PersonDetailsPage';
 import { RequestUploadDocumentPage } from '../pages/RequestUploadDocumentPage';
-
-// ============================================
-// Types
-// ============================================
+import {LoginPage} from "@tests/pages/LoginPage";
+import {TwoFAPage} from "@tests/pages/TwoFAPage";
 
 export interface PersonData {
   firstName: string;
@@ -53,52 +39,48 @@ interface AdminJourneyState {
   requestDocumentData?: RequestDocumentData;
 }
 
-// ============================================
-// AdminJourneyFlow Class
-// ============================================
-
-export class AdminJourneyFlow {
+export class AdminJourneyFlow extends BaseFlow {
   private state: AdminJourneyState = {};
-  private qe: any;
-  
-  // Page objects
-  private loginPage: LoginPage;
+
   private personsPage: PersonsPage;
   private assignPage: AssignPage;
   private personDetailsPage: PersonDetailsPage;
   private requestUploadDocumentPage: RequestUploadDocumentPage;
-  
-  constructor(private page: Page) {
-    this.qe = PlaywrightInstance.get(page);
-    
-    // Initialize page objects
-    this.loginPage = new LoginPage(this.qe, page);
+
+  constructor(page: Page, sessionConfig?: SessionConfig) {
+    super(page, sessionConfig);
     this.personsPage = new PersonsPage(this.qe, page);
     this.assignPage = new AssignPage(this.qe, page);
     this.personDetailsPage = new PersonDetailsPage(this.qe, page);
     this.requestUploadDocumentPage = new RequestUploadDocumentPage(this.qe, page);
   }
-  
-  // ============================================
-  // Login & Navigation
-  // ============================================
-  
-  /**
-   * Admin logs into the system
-   * 
-   * ✅ Integrates with testStep for reporting
-   */
-  async loginAsAdmin() {
-    await testStep('Admin logs in successfully', async () => {
-      await this.loginPage.loginAsAutoAccount();
-      await this.qe.screen.screenshot('01-after-login');
-    });
+
+  protected onPageUpdated(): void {
+    this.personsPage = new PersonsPage(this.qe, this.page);
+    this.assignPage = new AssignPage(this.qe, this.page);
+    this.personDetailsPage = new PersonDetailsPage(this.qe, this.page);
+    this.requestUploadDocumentPage = new RequestUploadDocumentPage(this.qe, this.page);
+  }
+
+  async login(sessionConfig?: SessionConfig, twoFAOptions?: TwoFAOptions) {
+    if (sessionConfig) {
+      this.sessionConfig = sessionConfig;
+    }
+    await super.performLogin(this.sessionConfig, twoFAOptions);
     return this;
   }
-  
-  /**
-   * Admin views all assigned items in Assign tab
-   */
+
+  async gotoPersonDetailsById(personId: string) {
+    const baseUrl =
+      this.qe.envProps.get('baseUrl') || 'http://127.0.0.1:3000';
+    await this.page.goto(`${baseUrl}/lobby/edit-person/${personId}`);
+    return this;
+  }
+
+  async loginAsAdmin() {
+    return this.login();
+  }
+
   async viewAssignOverview() {
     await testStep('Admin views all assigned items in Assign tab', async () => {
       await this.assignPage.openAndVerifyOverview();
@@ -106,23 +88,11 @@ export class AdminJourneyFlow {
     });
     return this;
   }
-  
-  // ============================================
-  // Person Management
-  // ============================================
-  
-  /**
-   * Admin creates a new person
-   * Expected: Person is created with [AUTO] prefix in name
-   */
+
   async createPerson(data: PersonData) {
     await testStep('Admin creates a new Person successfully', async () => {
       const result = await this.personsPage.createPersonSuccessfully(data);
-      
-      // Verify person was created correctly
-      // - Person ID should exist
-      // - First name should contain [AUTO] prefix
-      // - First name should contain the original name
+
       if (!result.personId) {
         throw new Error('Person creation failed: personId is missing');
       }
@@ -132,22 +102,18 @@ export class AdminJourneyFlow {
       if (!result.actualFirstName.includes(data.firstName)) {
         throw new Error(`Person creation failed: firstName "${data.firstName}" not found`);
       }
-      
+
       this.state.personResult = result;
       await this.qe.screen.screenshot('03-after-person-creation');
     });
     return this;
   }
-  
-  /**
-   * Admin verifies person details on Person Details page
-   * Expected: Form shows the correct person information
-   */
+
   async verifyPersonDetails(data: PersonData) {
     if (!this.state.personResult) {
       throw new Error('Cannot verify person details: person not created yet. Call createPerson() first.');
     }
-    
+
     await testStep('Admin verifies person details on Person Details page', async () => {
       await this.personDetailsPage.verifyPersonDetails({
         firstName: this.state.personResult!.actualFirstName,
@@ -158,16 +124,12 @@ export class AdminJourneyFlow {
     });
     return this;
   }
-  
-  /**
-   * Admin searches for person by name and deletes it
-   * Expected: Person is deleted from the system
-   */
+
   async deletePerson(data: PersonData) {
     if (!this.state.personResult) {
       throw new Error('Cannot delete person: person not created yet. Call createPerson() first.');
     }
-    
+
     await testStep('Admin searches for person by name and deletes it', async () => {
       const fullName = `${this.state.personResult!.actualFirstName} ${data.middleName} ${data.lastName}`.trim();
       await this.personsPage.deletePersonByName(fullName);
@@ -175,29 +137,15 @@ export class AdminJourneyFlow {
     });
     return this;
   }
-  
-  // ============================================
-  // Document Upload
-  // ============================================
-  
-  /**
-   * Admin requests document upload and receives uploaded file
-   * Flow:
-   *   1. Admin requests document upload for folder
-   *   2. System sends email with secret key
-   *   3. Recipient (simulated) uploads document using secret key
-   *   4. Admin verifies document appears in folder
-   */
+
   async requestDocumentUploadAndVerify(config: DocumentUploadConfig) {
     if (!this.state.personResult) {
       throw new Error('Cannot request document upload: person not created yet. Call createPerson() first.');
     }
-    
+
     await testStep('Admin requests document upload and receives uploaded file successfully', async () => {
-      // Navigate to person details page
       await this.personDetailsPage.goto(this.state.personResult!.personId);
-      
-      // Request document upload
+
       const requestDocumentData = await this.personDetailsPage.requestDocumentUpload(
         config.folderName,
         {
@@ -206,54 +154,179 @@ export class AdminJourneyFlow {
           message: config.message
         }
       );
-      
+
       if (!requestDocumentData) {
         throw new Error('Failed to capture request document data from API response');
       }
-      
+
       this.state.requestDocumentData = requestDocumentData;
-      
-      // Simulate recipient: navigate to upload page and complete upload
+
       await this.requestUploadDocumentPage.goto(requestDocumentData.requestDocumentId);
       await this.requestUploadDocumentPage.completeUploadFlow(requestDocumentData.secretKey);
-      
-      // Wait for document to be processed and appear in folder
+
       await testStep('Waiting for document to appear in CV folder', async () => {
         if (!this.page.isClosed()) {
           await this.page.waitForTimeout(2000);
         }
-        
-        // Navigate back to person details page and verify document appears
         await this.personDetailsPage.goto(this.state.personResult!.personId);
         await this.personDetailsPage.verifyDocumentInFolder(
           config.folderName,
           config.expectedFileName
         );
       });
-      
+
       await this.qe.screen.screenshot('05-after-document-upload-verification');
     });
     return this;
   }
-  
-  // ============================================
-  // Composed Flows (Sub-flows)
-  // ============================================
+
+  // continue other test steps
+  // 1. Authentication & Security Flow
   
   /**
-   * Compose: Create person and verify details
-   * This is a sub-flow that combines createPerson + verifyPersonDetails
+   * Business flow: Standard login flow
+   * 
+   * Framework Pattern:
+   * - Compose BaseFlow protected steps (enterEmailAndPassword, enter2FA, landOnDashboard)
+   * - Wrap trong testStep() từ @playwrightUtils (framework standard)
+   * - Return this để enable Fluent Interface
+   * - Pattern giống với existing methods (viewAssignOverview line 145, createPerson line 161)
+   * 
+   * @param data - Login credentials (email, password)
+   * @returns this for fluent interface
    */
+  async adminLoginFlow(data: { email: string, password: string }): Promise<this> {
+    await testStep('Standard Login', async () => {
+      // Step 1: Enter credentials và extract secret từ /auth/2fa/secret endpoint
+      // ⚠️ CRITICAL: enterEmailAndPassword() return secret để pass vào enter2FA()
+      // Note: enterEmailAndPassword() reuse LoginPage.login() để get secret từ /auth/2fa/secret endpoint
+      const { secret } = await this.enterEmailAndPassword(data.email, data.password);
+      
+      // Step 2: Handle 2FA với secret (nếu có) để auto-generate OTP
+      // Note: BaseFlow.enterEmailAndPassword() đã submit form và get secret từ /auth/2fa/secret endpoint,
+      // pass secret vào enter2FA() để auto-generate OTP thay vì manual code
+      await this.enter2FA(undefined, secret);
+      
+      // Step 3: Verify landed on dashboard (compose BaseFlow protected method)
+      await this.landOnDashboard();
+    });
+    return this;
+  }
+
+  async adminPasswordResetFlow() {
+    await testStep('Password Reset', async () => {
+
+    });
+    return this;
+  }
+
+  async adminLogoutFlow() {
+    await testStep('Logout', async () => {
+
+    });
+    return this;
+  }
+
+
+
+
+  async adminAuthenticationAndSecurityFlow(data: { email: string, password: string }) {
+    await testStep('Authentication and Security Flow', async () => {
+      await this.adminLoginFlow(data);
+      await this.adminPasswordResetFlow();
+      await this.adminLogoutFlow();
+    });
+    return this;
+  }
+
+
+  /**
+   * Business flow: Main menu walkthrough
+   * Navigate through main sidebar menu items to verify navigation works
+   * 
+   * Pattern:
+   * - Navigate through key menu items (Persons, Assign, Admin submenu items)
+   * - Verify each page loads correctly
+   * - Wrap trong testStep với business description
+   * - Return this để enable Fluent Interface
+   * 
+   * @returns this for fluent interface
+   */
+  async mainMenuWalkthrough(): Promise<this> {
+    await testStep('Main Menu Walkthrough', async () => {
+      // Navigate to Persons page
+      await this.personsPage.goto();
+      await this.personsPage.waitForPageLoad();
+      await this.qe.screen.screenshot('main-menu-persons');
+
+      // Navigate to Assign page
+      await this.assignPage.goto();
+      await this.assignPage.waitForTable();
+      await this.qe.screen.screenshot('main-menu-assign');
+
+      // Navigate back to dashboard
+      const baseUrl = this.qe.envProps.get('baseUrl') || 'http://127.0.0.1:3000';
+      await this.page.goto(`${baseUrl}/lobby/dashboard`);
+      await this.page.waitForLoadState('networkidle');
+      await this.qe.screen.screenshot('main-menu-dashboard');
+    });
+    return this;
+  }
+
+  async globalSearch(data: PersonData): Promise<this> {
+    await testStep('Global Search', async () => {
+      const currentUrl = this.page.url();
+      if (!currentUrl.includes('/lobby/')) {
+        const baseUrl = this.qe.envProps.get('baseUrl') || 'http://127.0.0.1:3000';
+        await this.page.goto(`${baseUrl}/lobby/dashboard`);
+        await this.page.waitForLoadState('networkidle');
+      }
+
+      const searchTerm = `${data.firstName} ${data.lastName}`.trim();
+      const globalSearchInput = this.page.locator('#search-input');
+      await globalSearchInput.waitFor({ state: 'visible', timeout: 10000 });
+      await globalSearchInput.clear();
+      await globalSearchInput.fill(searchTerm);
+
+      await this.page.waitForTimeout(2000);
+      await this.qe.screen.screenshot('global-search-results');
+      await globalSearchInput.press('Escape');
+      await this.page.waitForTimeout(500);
+    });
+    return this;
+  }
+
+  /**
+   * Business flow: Main Navigation and Global Search Flow
+   * Compose mainMenuWalkthrough and globalSearch flows
+   * 
+   * Pattern:
+   * - Compose multiple business flows
+   * - Wrap trong testStep với high-level description
+   * - Return this để enable Fluent Interface
+   * 
+   * @param data - Person data for global search
+   * @returns this for fluent interface
+   */
+  async adminMainNavigationAndGlobalSearchFlow(data?: PersonData): Promise<this> {
+    await testStep('Main Navigation and Global Search Flow', async () => {
+      // Step 1: Navigate through main menu
+      await this.mainMenuWalkthrough();
+
+      // Step 2: Use global search (if person data provided)
+      if (data) {
+        await this.globalSearch(data);
+      }
+    });
+    return this;
+  }
+
   async createPersonAndVerify(data: PersonData) {
     await this.createPerson(data);
     await this.verifyPersonDetails(data);
     return this;
   }
-  
-  /**
-   * Compose: Full admin journey
-   * This is a complete flow from login to cleanup
-   */
+
   async fullJourney(personData: PersonData, documentConfig: DocumentUploadConfig) {
     await this.loginAsAdmin();
     await this.viewAssignOverview();
@@ -262,28 +335,25 @@ export class AdminJourneyFlow {
     await this.deletePerson(personData);
     return this;
   }
-  
+
   // ============================================
   // State Access
   // ============================================
-  
+
   /**
    * Get current state (for assertions or further actions)
    */
   getState(): AdminJourneyState {
     return { ...this.state };
   }
-  
-  /**
-   * Get person result
-   */
+
   getPersonResult(): CreatePersonResult {
     if (!this.state.personResult) {
       throw new Error('Person result not available. Call createPerson() first.');
     }
     return this.state.personResult;
   }
-  
+
   /**
    * Get request document data
    */
@@ -295,17 +365,10 @@ export class AdminJourneyFlow {
   }
 }
 
-// ============================================
-// Factory Function
-// ============================================
-
-/**
- * Create AdminJourneyFlow instance
- * 
- * @param page Playwright Page object
- * @returns AdminJourneyFlow instance
- */
-export function createAdminJourneyFlow(page: Page): AdminJourneyFlow {
-  return new AdminJourneyFlow(page);
+export function createAdminJourneyFlow(
+  page: Page,
+  sessionConfig?: SessionConfig
+): AdminJourneyFlow {
+  return new AdminJourneyFlow(page, sessionConfig);
 }
 

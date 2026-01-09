@@ -1,0 +1,50 @@
+# Environment Variables for Session Management
+# 
+# Copy this file to ~/.qe (home directory) and fill in your actual values
+#
+# On Windows: Copy to %USERPROFILE%\.qe
+# On Mac/Linux: Copy to ~/.qe
+#
+# Framework Load Priority:
+# 1. Project root .env file (if exists)
+#
+# If you want to use .qe as primary, just don't create .env file in project root
+# Framework will automatically load from ~/.qe on startup (via doAuto() in coreInstance.ts)
+
+# DATAKEY - Environment identifier for test data (dev, prod, staging)
+# This matches the DATAKEY in YAML/CSV test data files
+# Example: If DATAKEY=dev, framework will load data from 'dev' section in userAccounts.yaml
+DATAKEY=dev
+
+# Session Credentials - Generic (fallback for all session types)
+# These are used when session-specific env vars are not set
+SPEEDYDD_DEV_EMAIL=admin@dev.speedydd.com
+SPEEDYDD_DEV_PASSWORD=Password123!
+
+# Session Credentials - Admin (optional, overrides generic)
+# If not set, will fallback to SPEEDYDD_DEV_EMAIL and SPEEDYDD_DEV_PASSWORD
+SPEEDYDD_ADMIN_EMAIL=admin01@test.com
+SPEEDYDD_ADMIN_PASSWORD=Pass1
+
+# Session Credentials - User (optional, overrides generic)
+SPEEDYDD_USER_EMAIL=user01@test.com
+SPEEDYDD_USER_PASSWORD=Pass1
+
+# Session Credentials - Trial (optional, overrides generic)
+SPEEDYDD_TRIAL_EMAIL=trial01@test.com
+SPEEDYDD_TRIAL_PASSWORD=Pass1
+
+# Session Credentials - Owner (optional, overrides generic)
+SPEEDYDD_OWNER_EMAIL=owner01@test.com
+SPEEDYDD_OWNER_PASSWORD=Pass1
+
+# Session Credentials - Super Admin (optional, overrides generic)
+SPEEDYDD_SUPER_ADMIN_EMAIL=superadmin01@test.com
+SPEEDYDD_SUPER_ADMIN_PASSWORD=Pass1
+
+# Framework Configuration
+# QE_CONFIG_ID is set automatically by framework, but can be overridden
+# QE_CONFIG_ID=web.conf
+
+
+

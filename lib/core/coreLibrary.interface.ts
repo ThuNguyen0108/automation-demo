@@ -1,4 +1,19 @@
 import { GetCurrentMap } from "./coreMaps";
+import {
+    ICoreAPIUtil,
+    IConfluenceUtil,
+    ILaunchDarklyUtil,
+    IDataUtil,
+    IFileUtil,
+    IDynamoUtil,
+    IOracleUtil,
+    IPostgresUtil,
+    IQTestUtil,
+    ILogUtil,
+    ICoreSupportUtil,
+    ICoreTransactionUtil,
+    ITVTUtil
+} from '@utils';
 
 export interface ICoreLibrary {
     allData: Map<string, Map<string, any>>;
@@ -13,7 +28,7 @@ export interface ICoreLibrary {
     data: IDataUtil;
     files: IFileUtil;
     db: {
-        dynamo: IDynamoDBUtil;
+        dynamo: IDynamoUtil;
         oracle: IOracleUtil;
         postgres: IPostgresUtil;
     }
@@ -23,7 +38,7 @@ export interface ICoreLibrary {
     log: ILogUtil;
     support: ICoreSupportUtil;
     txn: ICoreTransactionUtil;
-    tvt: ITVUtil;
+    tvt: ITVTUtil;
     process: {
         BROWSER: string;
         PERFECTO_BROWSER: string;
@@ -52,6 +67,7 @@ export interface ICoreLibrary {
         charts: string;
         perfecto: string;
         test: string;
+        storageStates: string;
         sanitizePath(segments: string[] | string): string;
         sanitizeDirectory(segments: string[] | string): string;
     };

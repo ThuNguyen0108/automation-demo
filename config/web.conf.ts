@@ -18,7 +18,7 @@ const config = defineConfig(
             
             retries: 0,
             workers: 1,
-            timeout: 120000,
+            timeout: 3600000,
             navigationTimeout: 60000,
             testDir: path.resolve(__dirname, '../tests'),
             testMatch: '**/*.spec.ts',

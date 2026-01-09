@@ -11,7 +11,7 @@ export interface IDataUtil {
     initEnvProps: () => Map<string, any>;
     debug_PrintDataMaps: () => Promise<void>;
     initQueryProps: (fileName: string) => void;
-    get: (valueKey: string | string[]) => Promise<string | null>;
+    get: (valueKey: string | string[]) => Promise<any>;
     getName: () => Promise<IName>;
     getPhone: (spaces?: boolean) => Promise<string>;
     getInternationalPhone: (spaces?: boolean) => Promise<string>;

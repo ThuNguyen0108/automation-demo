@@ -81,5 +81,54 @@ export abstract class BasePage {
       // Ignore networkidle timeout
     }
   }
+
+  /**
+   * Wait for URL pathname to change from specified pathname(s)
+   * 
+   * Pattern: Follows WaitUtil pattern with timeout and interval from projectProps
+   * Similar to WaitUtil.waitForVisibility() implementation
+   * 
+   * This method is useful for waiting for redirects to complete before checking pathname.
+   * Used in BaseFlow.handle2FAIfNeeded() and BaseFlow.verifyAuthenticated().
+   * 
+   * Note: Made public to allow access from BaseFlow and other non-subclass contexts.
+   * 
+   * @param fromPathnames - Single pathname string or array of pathnames to wait for change from
+   * @param waitTime - Maximum wait time in milliseconds (default: from projectProps.waitForTimeout or 10000)
+   * @param interval - Interval between checks in milliseconds (default: from projectProps.interval or 200)
+   * @returns The current pathname after it has changed
+   */
+  public async waitForPathnameChange(
+    fromPathnames: string | string[],
+    waitTime?: number,
+    interval?: number
+  ): Promise<string> {
+    const pathnamesToCheck = Array.isArray(fromPathnames) ? fromPathnames : [fromPathnames];
+    
+    // Use framework defaults from projectProps (similar to WaitUtil pattern)
+    const defaultWaitTime = this.qe.projectProps?.waitForTimeout || 10000;
+    const defaultInterval = this.qe.projectProps?.interval || 200;
+    
+    let currentTimeout: number = waitTime || defaultWaitTime;
+    const currentInterval: number = interval || defaultInterval;
+
+    while (currentTimeout > 0) {
+      const currentUrl = this.page.url();
+      const pathname = new URL(currentUrl).pathname;
+
+      // If we're no longer on any of the specified pathnames, return current pathname
+      if (!pathnamesToCheck.includes(pathname)) {
+        return pathname;
+      }
+
+      // Wait for interval (using framework's wait utility)
+      await this.qe.wait.duration(currentInterval);
+      currentTimeout -= currentInterval;
+    }
+
+    // Timeout reached, return current pathname anyway
+    const currentUrl = this.page.url();
+    return new URL(currentUrl).pathname;
+  }
 }
 

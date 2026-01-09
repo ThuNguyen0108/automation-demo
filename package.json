@@ -7,7 +7,7 @@
     "test": "tests"
   },
   "scripts": {
-    "clean": "rimraf buil09d",
+    "clean": "rimraf build",
     "test": "playwright test --config=config/web.conf.ts",
     "test:ui": "playwright test --config=config/web.conf.ts --ui",
     "test:debug": "PWDEBUG=1 playwright test --config=config/web.conf.ts",
@@ -21,7 +21,7 @@
     "report:allure:unified": "node scripts/open-unified-report.js",
     "report": "playwright show-report build/logs/web.conf/playwright/report",
     "report:allure": "npm run report:allure:generate && npm run report:allure:open",
-    "test:spec": "npm run clean && playwright test --config=config/web.conf.ts tests/specs/admin-journey-with-flow.spec.ts"
+    "test:spec": "npm run clean && playwright test --config=config/web.conf.ts tests/specs/user-journey/admin-core-journey.spec.ts --headed"
   },
   "author": "",
   "license": "ISC",
@@ -44,6 +44,7 @@
     "@types/oracledb": "^6.0.3",
     "@types/papaparse": "^5.3.16",
     "@types/pg": "^8.10.9",
+    "@types/proper-lockfile": "^4.1.4",
     "@types/properties-reader": "^2.1.3",
     "@types/uuid": "^10.0.0",
     "@wdio/allure-reporter": "^9.6.3",
@@ -81,23 +82,25 @@
     "moment": "^2.29.4",
     "moment-business-days": "^1.2.0",
     "oracledb": "^6.2.0",
+    "otplib": "^12.0.1",
     "papaparse": "^5.5.3",
     "perfecto-reporting": "^2.5.4",
     "pg": "^8.11.3",
     "playwright": "^1.55.0",
     "playwright-core": "^1.55.0",
     "playwright-lighthouse": "^4.0.0",
+    "proper-lockfile": "^4.1.2",
     "properties-reader": "^2.3.0",
     "qtest_integration": "^1.2.1",
     "simple-git": "^3.28.0",
     "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
     "typescript": "^5.7.2",
     "uuid": "^10.0.0",
     "wdio-axe": "^2.2.3",
     "wdio-intercept-service": "^4.4.1",
     "webdriverio": "^9.8.0",
-    "xlsx": "^0.18.5",
-    "tsconfig-paths": "^4.2.0"
+    "xlsx": "^0.18.5"
   },
   "engines": {
     "node": ">=20.0.0"

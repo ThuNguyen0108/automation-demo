@@ -45,29 +45,48 @@ function setupPlaywrightConfig(): void {
 }
 
 export function sharedConfig(overrides: UserOverrides): PlaywrightTestConfig {
-    if (process.env.QE_CONFIG_ID === undefined) setupPlaywrightConfig();
+    // DEBUG: Track execution order - Note: LogUtil may not be initialized yet
+    // Use process.stdout.write for early logging before CoreLibrary is initialized
+    process.stdout.write(`[EXECUTION ORDER] Phase 1: sharedConfig() started\n`);
+    process.stdout.write(`[EXECUTION ORDER] QE_CONFIG_ID before setupPlaywrightConfig(): ${process.env.QE_CONFIG_ID || 'UNDEFINED'}\n`);
+    
+    if (process.env.QE_CONFIG_ID === undefined) {
+        process.stdout.write(`[EXECUTION ORDER] Calling setupPlaywrightConfig() to auto-detect QE_CONFIG_ID\n`);
+        setupPlaywrightConfig();
+        process.stdout.write(`[EXECUTION ORDER] After setupPlaywrightConfig() - QE_CONFIG_ID: ${process.env.QE_CONFIG_ID || 'UNDEFINED'}\n`);
+    }
+    
     if (process.env.QE_CONFIG_ID === undefined) {
         // Try to extract from --config argument
+        process.stdout.write(`[EXECUTION ORDER] Trying to extract QE_CONFIG_ID from --config argument\n`);
         const configArg = process.argv.find(arg => arg.startsWith('--config') || arg.startsWith('-c'));
         if (configArg) {
             const configPath = configArg.includes('=') ? configArg.split('=')[1] : process.argv[process.argv.indexOf(configArg) + 1];
             if (configPath) {
                 const configFileName = path.basename(configPath, path.extname(configPath));
                 process.env.QE_CONFIG_ID = configFileName;
+                process.stdout.write(`[EXECUTION ORDER] Extracted QE_CONFIG_ID from --config: ${process.env.QE_CONFIG_ID}\n`);
                 if (!process.env.QE_CONFIG_PATH) {
                     process.env.QE_CONFIG_PATH = path.dirname(configPath);
                 }
             }
         }
     }
+    
     if (process.env.QE_CONFIG_ID === undefined && process.argv[4] !== undefined) {
+        process.stdout.write(`[EXECUTION ORDER] Trying to extract QE_CONFIG_ID from process.argv[4]\n`);
         const userConfig: string = process.argv[4];
         process.env.QE_CONFIG_ID = (userConfig.split(path.sep).pop() ?? '').replace('.ts', '');
+        process.stdout.write(`[EXECUTION ORDER] Extracted QE_CONFIG_ID from argv[4]: ${process.env.QE_CONFIG_ID}\n`);
     }
+    
     // Final fallback
     if (process.env.QE_CONFIG_ID === undefined) {
         process.env.QE_CONFIG_ID = 'web';
+        process.stdout.write(`[EXECUTION ORDER] Using FALLBACK value: QE_CONFIG_ID = 'web'\n`);
     }
+    
+    process.stdout.write(`[EXECUTION ORDER] Final QE_CONFIG_ID: ${process.env.QE_CONFIG_ID}\n`);
 
     if (process.env.QE_ALLURE_DIR === undefined)
         process.env.QE_ALLURE_DIR = pathUtil.sanitizeDirectory([

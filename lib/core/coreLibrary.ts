@@ -88,6 +88,7 @@ export class CoreLibrary {
         charts: string;
         perfecto: string;
         test: string;
+        storageStates: string;
         sanitizePath(segments: string[] | string): string;
         sanitizeDirectory(segments: string[] | string): string;
     };

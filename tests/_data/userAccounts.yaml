@@ -1,0 +1,200 @@
+# User Accounts Test Data
+# Format: testData -> testName -> DATAKEY -> fields
+# 
+# Usage:
+# 1. Set DATAKEY environment variable (e.g., DATAKEY=dev)
+# 2. In test: await qe.data.setTestData('admin-session')
+# 3. Get values: await qe.data.get('email'), await qe.data.get('password'), await qe.data.get('sessionType')
+#
+# Note: testName should match the parameter passed to setTestData()
+# Example: setTestData('admin-session') matches 'admin-session' key below
+
+testData:
+  # Admin session - used across multiple tests
+  admin-session:
+    dev:
+      email: nguyen.thu@speedydd.com
+      password: Abc123456#
+      sessionType: admin
+    prod:
+      email: admin01@prod.com
+      password: Pass1Prod
+      sessionType: admin
+    staging:
+      email: admin01@staging.com
+      password: Pass1Staging
+      sessionType: admin
+
+  # User session - used across multiple tests
+  user-session:
+    dev:
+      email: auto-speedydd-02@outlook.com
+      password: Abc123456@
+      sessionType: user
+    prod:
+      email: user01@prod.com
+      password: Pass1Prod
+      sessionType: user
+
+  # Trial session - used across multiple tests
+  trial-session:
+    dev:
+      email: trial01@test.com
+      password: Pass1
+      sessionType: trial
+    prod:
+      email: trial01@prod.com
+      password: Pass1Prod
+      sessionType: trial
+
+  # Owner session - used across multiple tests
+  owner-session:
+    dev:
+      email: owner01@test.com
+      password: Pass1
+      sessionType: owner
+    prod:
+      email: owner01@prod.com
+      password: Pass1Prod
+      sessionType: owner
+
+  # Super-admin session - used across multiple tests
+  super-admin-session:
+    dev:
+      email: superadmin01@test.com
+      password: Pass1
+      sessionType: super-admin
+    prod:
+      email: superadmin01@prod.com
+      password: Pass1Prod
+      sessionType: super-admin
+
+  # Admin journey test - specific test data (can also use admin-session)
+  admin-journey:
+    dev:
+      email: admin01@test.com
+      password: Pass1
+      sessionType: admin
+    prod:
+      email: admin01@prod.com
+      password: Pass1Prod
+      sessionType: admin
+
+  # Test data with mixed types - for testing qe.data.get() type support
+  test-mixed-types:
+    dev:
+      # String fields
+      email: test@example.com
+      password: Test123
+      sessionType: admin
+      # Number fields
+      timeout: 30000
+      retryCount: 3
+      maxWaitTime: 5000
+      # Boolean fields
+      isActive: true
+      enableLogging: false
+      skip2FA: true
+      # Array fields
+      permissions:
+        - read
+        - write
+        - delete
+      tags:
+        - admin
+        - test
+        - e2e
+      # Object fields
+      config:
+        apiEndpoint: https://api.example.com
+        version: v1
+        debug: true
+      metadata:
+        createdBy: test-user
+        environment: dev
+        priority: high
+      # Nested Object (object inside object)
+      nestedConfig:
+        api:
+          endpoint: https://api.example.com
+          version: v1
+          timeout: 30000
+          retry:
+            maxAttempts: 3
+            backoffMs: 1000
+        database:
+          host: localhost
+          port: 5432
+          credentials:
+            username: admin
+            password: secret123
+        features:
+          enabled: true
+          flags:
+            - feature1
+            - feature2
+      # Nested Array (array of objects, objects with arrays)
+      nestedArray:
+        - id: 1
+          name: User 1
+          roles:
+            - admin
+            - editor
+          permissions:
+            read: true
+            write: true
+            delete: false
+        - id: 2
+          name: User 2
+          roles:
+            - viewer
+          permissions:
+            read: true
+            write: false
+            delete: false
+      # Complex nested structure (object with nested arrays and objects)
+      complexStructure:
+        users:
+          - id: 1
+            profile:
+              firstName: John
+              lastName: Doe
+              contact:
+                email: john@example.com
+                phones:
+                  - "123-456-7890"
+                  - "098-765-4321"
+            settings:
+              theme: dark
+              notifications:
+                email: true
+                sms: false
+          - id: 2
+            profile:
+              firstName: Jane
+              lastName: Smith
+              contact:
+                email: jane@example.com
+                phones:
+                  - "555-123-4567"
+            settings:
+              theme: light
+              notifications:
+                email: true
+                sms: true
+        globalConfig:
+          api:
+            baseUrl: https://api.example.com
+            endpoints:
+              auth: /auth
+              users: /users
+              data: /data
+          cache:
+            enabled: true
+            ttl: 3600
+            strategies:
+              - memory
+              - redis
+
+
+

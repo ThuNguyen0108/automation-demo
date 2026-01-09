@@ -1,0 +1,47 @@
+# Environment Variables for Session Management
+#
+# NOTE: This file is now loaded from the PROJECT ROOT of `speedydd-auto`
+# by `doAuto()` in `lib/core/coreInstance.ts`.
+# It will populate process.env[...] (including DATAKEY) before tests run.
+#
+# Example usage:
+# - DATAKEY controls which block in tests/_data/userAccounts.yaml is used (dev/prod/staging)
+# - SPEEDYDD_*_EMAIL/PASSWORD are used as fallbacks when test data is missing
+
+# DATAKEY - Environment identifier for test data (dev, prod, staging)
+# This matches the DATAKEY in YAML/CSV test data files
+# Example: If DATAKEY=dev, framework will load data from 'dev' section in userAccounts.yaml
+DATAKEY=dev
+
+# Session Credentials - Generic (fallback for all session types)
+# These are used when session-specific env vars are not set
+SPEEDYDD_DEV_EMAIL=auto-speedydd-01@outlook.com
+SPEEDYDD_DEV_PASSWORD=Abc123456!
+
+# Session Credentials - Admin (optional, overrides generic)
+# If not set, will fallback to SPEEDYDD_DEV_EMAIL and SPEEDYDD_DEV_PASSWORD
+SPEEDYDD_ADMIN_EMAIL=auto-speedydd-01@outlook.com
+SPEEDYDD_ADMIN_PASSWORD=Abc123456@
+
+# Session Credentials - User (optional, overrides generic)
+SPEEDYDD_USER_EMAIL=auto-speedydd-02@outlook.com
+SPEEDYDD_USER_PASSWORD=Abc123456@
+
+# Session Credentials - Trial (optional, overrides generic)
+; SPEEDYDD_TRIAL_EMAIL=
+; SPEEDYDD_TRIAL_PASSWORD=
+
+# Session Credentials - Owner (optional, overrides generic)
+; SPEEDYDD_OWNER_EMAIL=
+; SPEEDYDD_OWNER_PASSWORD=
+
+# Session Credentials - Super Admin (optional, overrides generic)
+; SPEEDYDD_SUPER_ADMIN_EMAIL=nguyen.thu@speedydd.com
+; SPEEDYDD_SUPER_ADMIN_PASSWORD=Abc123456#
+
+# Framework Configuration (optional)
+# QE_CONFIG_ID is normally set automatically by Playwright config name (e.g. web.conf)
+# You usually DO NOT need to override this here.
+# QE_CONFIG_ID=web.conf
+
+
