@@ -194,7 +194,7 @@ export abstract class BaseFlow {
   private async handle2FASetup(secret?: string): Promise<void> {
     await testStep('Handling first time 2FA setup', async () => {
       const setup2FAPage = new Setup2FAPage(this.qe, this.page);
-      
+
       let setupSecret = secret;
       if (!setupSecret) {
         CoreLibrary.log.debug('[BaseFlow] Secret not available from /auth/2fa/secret endpoint for first time setup. Attempting to extract from QR code...');
@@ -208,7 +208,7 @@ export abstract class BaseFlow {
       } else {
         CoreLibrary.log.debug('[BaseFlow] Using secret from /auth/2fa/secret endpoint for first time 2FA setup.');
       }
-      
+
       await setup2FAPage.setupWithSecret(setupSecret);
     });
   }
@@ -286,25 +286,27 @@ export abstract class BaseFlow {
     }
   }
 
+  /*
+      FUNCTION: easy for combination to bigger flow
+   */
 
-
-  protected async enterEmailAndPassword(
-    email: string, 
-    password: string
+  async enterEmailAndPassword(
+    email?: string,
+    password?: string
   ): Promise<{ secret?: string }> {
     let secret: string | undefined;
-    
+
     await testStep('Enter Email and Password', async () => {
       const loginResult = await this.loginPage.login(email, password);
       secret = loginResult.secret;
       await this.page.waitForLoadState('networkidle');
       await this.loginPage.waitForPathnameChange(['/login', '/']);
     });
-    
+
     return { secret };
   }
 
-  protected async enter2FA(code?: string, secret?: string): Promise<void> {
+  async enter2FA(code?: string, secret?: string): Promise<void> {
     await testStep('Enter 2FA Code', async () => {
       if (secret) {
         await this.handle2FAIfNeeded(undefined, secret);
@@ -316,13 +318,65 @@ export abstract class BaseFlow {
     });
   }
 
-  protected async landOnDashboard(): Promise<void> {
+  async landOnDashboard(): Promise<void> {
     await testStep('Land on Dashboard', async () => {
       await this.verifyAuthenticated();
       await this.qe.screen.screenshot('landed-on-dashboard');
     });
   }
 
+  async clickItemsInSidebarByName(item) {
+    await testStep(`Click ${item} in sidebar`, async () => {
+
+    })
+  }
+
+  async searchItem(item) {
+
+  }
+
+  async verifyResultList() {
+
+  }
+
+
+  /*
+      FLOW: many functions together
+   */
+
+  async standardLogin(email?: string, password?: string) {
+    await testStep(`Standard Login`, async() => {
+      await this.enterEmailAndPassword(email, password);
+      await this.enter2FA();
+      await this.landOnDashboard();
+    })
+  }
+
+  async mainMenuWalkthrough(listOfItem?) {
+    await testStep(`Main Menu Walkthrough`, async() => {
+      await this.clickItemsInSidebarByName(...listOfItem)
+      await this.waitForPathnameChange('/')
+    })
+  }
+
+  async globalSearch(item?) {
+    await testStep(`Global Search Success`, async() => {
+      await this.searchItem(item)
+      await this.verifyResultList()
+    })
+  }
+
+  async createNewOrg() {
+
+  }
+
+  async addcompany() {
+
+  }
 
 }
 
+
+export function createComponentFlow(page: Page): BaseFlow {
+  return new (class extends BaseFlow {})(page);
+}

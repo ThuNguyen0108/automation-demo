@@ -1,18 +1,3 @@
-/**
- * SessionManager - Core session management class
- * 
- * Handles loading, saving, and validating storageState files.
- * All methods are static (no need to instantiate).
- * 
- * Features:
- * - Session key format: {sessionType}-{emailHash}
- * - Storage location: build/logs/{QE_CONFIG_ID}/storageStates/
- * - Test data driven (YAML/CSV) with environment variable fallback
- * - File locking for concurrent writes
- * - Atomic writes (write to .tmp, then rename)
- * - Auto-cleanup expired sessions (on-demand)
- */
-
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -26,11 +11,7 @@ import type {
 } from './types';
 
 export class SessionManager {
-  /**
-   * Generate session key from sessionType and email
-   * Format: {sessionType}-{emailHash}
-   * Hash: MD5 hash of email (first 8 chars)
-   */
+
   private static getSessionKey(config: SessionConfig): string {
     const emailHash = crypto
       .createHash('md5')
@@ -40,9 +21,7 @@ export class SessionManager {
     return `${config.sessionType}-${emailHash}`;
   }
 
-  /**
-   * Get storageState file path
-   */
+
   private static getStorageStatePath(sessionKey: string): string {
     return path.join(
       CoreLibrary.paths.storageStates,
@@ -50,9 +29,6 @@ export class SessionManager {
     );
   }
 
-  /**
-   * Get metadata file path
-   */
   private static getMetadataPath(sessionKey: string): string {
     return path.join(
       CoreLibrary.paths.storageStates,
@@ -60,20 +36,7 @@ export class SessionManager {
     );
   }
 
-  /**
-   * Check if storageState file exists and is valid (not expired)
-   * 
-   * Validation steps:
-   * 1. Generate session key
-   * 2. Check storageState file exists
-   * 3. Check metadata file exists
-   * 4. Read and parse metadata
-   * 5. Check expiry (heuristic check)
-   * 6. Auto-cleanup if expired
-   * 
-   * @param config Session configuration
-   * @returns true if valid, false otherwise
-   */
+ 
   static isStorageStateValid(config: SessionConfig): boolean {
     try {
       const sessionKey = this.getSessionKey(config);

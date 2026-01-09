@@ -5,7 +5,7 @@ import {
   createAdminJourneyFlow,
   PersonData,
   DocumentUploadConfig,
-} from '../../flows/AdminJourneyFlow';
+} from '@tests/flows/AdminJourneyFlow';
 
 const TEST_PERSON_DATA: PersonData = {
   firstName: 'John',

@@ -1,16 +1,4 @@
-# User Accounts Test Data
-# Format: testData -> testName -> DATAKEY -> fields
-# 
-# Usage:
-# 1. Set DATAKEY environment variable (e.g., DATAKEY=dev)
-# 2. In test: await qe.data.setTestData('admin-session')
-# 3. Get values: await qe.data.get('email'), await qe.data.get('password'), await qe.data.get('sessionType')
-#
-# Note: testName should match the parameter passed to setTestData()
-# Example: setTestData('admin-session') matches 'admin-session' key below
-
 testData:
-  # Admin session - used across multiple tests
   admin-session:
     dev:
       email: nguyen.thu@speedydd.com
@@ -25,7 +13,6 @@ testData:
       password: Pass1Staging
       sessionType: admin
 
-  # User session - used across multiple tests
   user-session:
     dev:
       email: auto-speedydd-02@outlook.com
@@ -36,7 +23,6 @@ testData:
       password: Pass1Prod
       sessionType: user
 
-  # Trial session - used across multiple tests
   trial-session:
     dev:
       email: trial01@test.com
@@ -47,7 +33,6 @@ testData:
       password: Pass1Prod
       sessionType: trial
 
-  # Owner session - used across multiple tests
   owner-session:
     dev:
       email: owner01@test.com
@@ -58,7 +43,6 @@ testData:
       password: Pass1Prod
       sessionType: owner
 
-  # Super-admin session - used across multiple tests
   super-admin-session:
     dev:
       email: superadmin01@test.com
@@ -69,7 +53,6 @@ testData:
       password: Pass1Prod
       sessionType: super-admin
 
-  # Admin journey test - specific test data (can also use admin-session)
   admin-journey:
     dev:
       email: admin01@test.com
@@ -80,22 +63,17 @@ testData:
       password: Pass1Prod
       sessionType: admin
 
-  # Test data with mixed types - for testing qe.data.get() type support
   test-mixed-types:
     dev:
-      # String fields
       email: test@example.com
       password: Test123
       sessionType: admin
-      # Number fields
       timeout: 30000
       retryCount: 3
       maxWaitTime: 5000
-      # Boolean fields
       isActive: true
       enableLogging: false
       skip2FA: true
-      # Array fields
       permissions:
         - read
         - write
@@ -104,7 +82,6 @@ testData:
         - admin
         - test
         - e2e
-      # Object fields
       config:
         apiEndpoint: https://api.example.com
         version: v1
@@ -113,7 +90,6 @@ testData:
         createdBy: test-user
         environment: dev
         priority: high
-      # Nested Object (object inside object)
       nestedConfig:
         api:
           endpoint: https://api.example.com
@@ -133,7 +109,6 @@ testData:
           flags:
             - feature1
             - feature2
-      # Nested Array (array of objects, objects with arrays)
       nestedArray:
         - id: 1
           name: User 1
@@ -152,7 +127,6 @@ testData:
             read: true
             write: false
             delete: false
-      # Complex nested structure (object with nested arrays and objects)
       complexStructure:
         users:
           - id: 1

@@ -204,44 +204,6 @@ export class AdminJourneyFlow extends BaseFlow {
   }
 
 
-
-
-  async adminAuthenticationAndSecurityFlow(data: { email: string, password: string }) {
-    await testStep('Authentication and Security Flow', async () => {
-      await this.adminLoginFlow(data);
-      await this.adminPasswordResetFlow();
-      await this.adminLogoutFlow();
-    });
-    return this;
-  }
-
-
-
-  async mainMenuWalkthrough(): Promise<this> {
-    await testStep('Main Menu Walkthrough', async () => {
-      
-    });
-    return this;
-  }
-
-  async globalSearch(data: PersonData): Promise<this> {
-    await testStep('Global Search', async () => {
-      
-    });
-    return this;
-  }
-
-
-  async adminMainNavigationAndGlobalSearchFlow(data?: PersonData): Promise<this> {
-    await testStep('Main Navigation and Global Search Flow', async () => {
-      await this.mainMenuWalkthrough();
-      if (data) {
-        await this.globalSearch(data);
-      }
-    });
-    return this;
-  }
-
   async createPersonAndVerify(data: PersonData) {
     await this.createPerson(data);
     await this.verifyPersonDetails(data);
