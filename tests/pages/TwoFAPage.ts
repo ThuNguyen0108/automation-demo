@@ -122,7 +122,7 @@ export class TwoFAPage extends BasePage {
     };
 
     if (!this.validateSecret(secret)) {
-      CoreLibrary.log.err(`Invalid secret format: ${secret}. Secret must be base32 encoded string (A-Z, 2-7, optional padding with =).`);
+      await CoreLibrary.log.err(`Invalid secret format: ${secret}. Secret must be base32 encoded string (A-Z, 2-7, optional padding with =).`);
       throw new Error(`Invalid secret format: ${secret}`);
     }
 
@@ -132,7 +132,7 @@ export class TwoFAPage extends BasePage {
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         const otp = authenticator.generate(secret);
-        CoreLibrary.log.debug(`2FA attempt ${attempt + 1}/${maxRetries + 1}: Using OTP ${otp}`);
+        await CoreLibrary.log.debug(`2FA attempt ${attempt + 1}/${maxRetries + 1}: Using OTP ${otp}`);
         await this.qe.ui.fill(this.locator('codeInput'), otp);
         await this.qe.ui.click(this.locator('submitButton'));
         await this.page.waitForLoadState('networkidle');
@@ -140,53 +140,53 @@ export class TwoFAPage extends BasePage {
         const currentUrl = this.page.url();
 
         if (pathname === '/lobby/dashboard' || pathname.startsWith('/lobby/')) {
-          CoreLibrary.log.debug(`[TwoFAPage] 2FA verification successful. Redirected to: ${currentUrl}`);
+          await CoreLibrary.log.debug(`[TwoFAPage] 2FA verification successful. Redirected to: ${currentUrl}`);
           return;
         }
 
         if (pathname.includes('/trial/') && pathname.includes('/dashboard')) {
-          CoreLibrary.log.debug(`[TwoFAPage] 2FA verification successful. Redirected to trial dashboard: ${currentUrl}`);
+          await CoreLibrary.log.debug(`[TwoFAPage] 2FA verification successful. Redirected to trial dashboard: ${currentUrl}`);
           return;
         }
 
         if (pathname === '/account-locked' || currentUrl.includes('/account-locked')) {
-          CoreLibrary.log.err('Account locked after 2FA verification. Cannot proceed.');
+          await CoreLibrary.log.err('Account locked after 2FA verification. Cannot proceed.');
           throw new Error('Account locked after 2FA verification');
         }
 
         if (pathname === '/verify-2fa') {
-          await this.page.waitForTimeout(500);
+          await this.page.waitForTimeout(2000);
           const errorElement = this.page.locator(this.locator('errorMessage'));
           const hasError = await errorElement.isVisible({ timeout: 2000 }).catch(() => false);
           let errorMessageText = '';
           if (hasError) {
             errorMessageText = await errorElement.textContent().catch(() => '') || '';
-            CoreLibrary.log.warning(`[TwoFAPage] Still on verification page after OTP submission. UI error message: "${errorMessageText}". Current URL: ${currentUrl}. Will retry if attempt < maxRetries.`);
+            await CoreLibrary.log.warning(`[TwoFAPage] Still on verification page after OTP submission. UI error message: "${errorMessageText}". Current URL: ${currentUrl}. Will retry if attempt < maxRetries.`);
           } else {
-            CoreLibrary.log.warning(`[TwoFAPage] Still on verification page after OTP submission (no UI error message visible). Current URL: ${currentUrl}. Will retry if attempt < maxRetries.`);
+            await CoreLibrary.log.warning(`[TwoFAPage] Still on verification page after OTP submission (no UI error message visible). Current URL: ${currentUrl}. Will retry if attempt < maxRetries.`);
           }
           throw new Error(`Still on verification page: ${errorMessageText || 'No error message visible'}`);
         }
 
-        CoreLibrary.log.warning(`[TwoFAPage] Unexpected pathname after OTP submission: ${pathname}. Current URL: ${currentUrl}. Will check error details and retry if needed.`);
-        
+        await CoreLibrary.log.warning(`[TwoFAPage] Unexpected pathname after OTP submission: ${pathname}. Current URL: ${currentUrl}. Will check error details and retry if needed.`);
+
       } catch (error: any) {
         lastError = error;
-        
+
         const currentUrl = this.page.url();
         const pathname = new URL(currentUrl).pathname;
         const isStillOn2FAPage = pathname === '/verify-2fa';
         const isAccountLocked = pathname === '/account-locked' || currentUrl.includes('/account-locked');
-        
+
         if (isAccountLocked) {
-          CoreLibrary.log.err(`[TwoFAPage] Account locked after 2FA verification attempt ${attempt + 1}. Cannot proceed.`);
+          await CoreLibrary.log.err(`[TwoFAPage] Account locked after 2FA verification attempt ${attempt + 1}. Cannot proceed.`);
           throw new Error('Account locked after 2FA verification');
         }
-        
+
         let isInvalidCode = false;
         let errorMessageText = '';
         if (isStillOn2FAPage) {
-          await this.page.waitForTimeout(500);
+          await this.page.waitForTimeout(2000);
           const errorElement = this.page.locator(this.locator('errorMessage'));
           const hasError = await errorElement.isVisible({ timeout: 2000 }).catch(() => false);
           if (hasError) {
@@ -194,7 +194,7 @@ export class TwoFAPage extends BasePage {
             isInvalidCode = errorMessageText.includes('not valid');
           }
         }
-        
+
         let retryReason = '';
         if (isStillOn2FAPage) {
           if (isInvalidCode) {
@@ -207,28 +207,28 @@ export class TwoFAPage extends BasePage {
         } else {
           retryReason = `Unexpected pathname: ${pathname}`;
         }
-        
+
         if ((isStillOn2FAPage || isInvalidCode) && attempt < maxRetries) {
-          CoreLibrary.log.warning(
+          await CoreLibrary.log.warning(
             `[TwoFAPage] 2FA attempt ${attempt + 1}/${maxRetries + 1} failed. Reason: ${retryReason}. Current URL: ${currentUrl}. Retrying with new OTP...`
           );
           await this.qe.ui.fill(this.locator('codeInput'), '');
           await this.page.waitForTimeout(2000);
           continue;
         }
-        
+
         if (attempt >= maxRetries) {
-          CoreLibrary.log.err(`[TwoFAPage] Max retries reached (${maxRetries + 1} attempts). Final failure reason: ${retryReason || 'Unknown error'}. Current URL: ${currentUrl}`);
+          await CoreLibrary.log.err(`[TwoFAPage] Max retries reached (${maxRetries + 1} attempts). Final failure reason: ${retryReason || 'Unknown error'}. Current URL: ${currentUrl}`);
         } else {
-          CoreLibrary.log.err(`[TwoFAPage] 2FA verification failed (non-retryable error). Reason: ${retryReason || error.message || 'Unknown error'}. Current URL: ${currentUrl}`);
+          await CoreLibrary.log.err(`[TwoFAPage] 2FA verification failed (non-retryable error). Reason: ${retryReason || error.message || 'Unknown error'}. Current URL: ${currentUrl}`);
         }
-        
+
         break;
       }
     }
-    
+
     const errorMessage = `2FA verification failed after ${maxRetries + 1} attempts. Last error: ${lastError?.message || 'Unknown error'}`;
-    CoreLibrary.log.warning(`[TwoFAPage] ${errorMessage}`);
+    await CoreLibrary.log.warning(`[TwoFAPage] ${errorMessage}`);
     throw lastError || new Error(errorMessage);
   }
 

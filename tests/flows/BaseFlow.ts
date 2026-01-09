@@ -110,9 +110,9 @@ export abstract class BaseFlow {
     const loginResult = await this.loginPage.login(config.email, config.password);
 
     if (loginResult.secret) {
-      CoreLibrary.log.debug('[BaseFlow] Account has secret from /auth/2fa/secret endpoint. Will use secret for 2FA if needed.');
+      await CoreLibrary.log.debug('[BaseFlow] Account has secret from /auth/2fa/secret endpoint. Will use secret for 2FA if needed.');
     } else {
-      CoreLibrary.log.debug('[BaseFlow] Account has no secret from /auth/2fa/secret endpoint. Will auto-detect redirect and handle accordingly.');
+      await CoreLibrary.log.debug('[BaseFlow] Account has no secret from /auth/2fa/secret endpoint. Will auto-detect redirect and handle accordingly.');
     }
 
     await this.handle2FAIfNeeded(twoFAOptions, loginResult.secret);
@@ -149,20 +149,20 @@ export abstract class BaseFlow {
     const currentUrl = this.page.url();
 
     if (pathname === '/lobby/dashboard' || pathname.startsWith('/lobby/')) {
-      CoreLibrary.log.debug('[BaseFlow] Account bypasses 2FA. Redirected to /lobby/**. Test continues without 2FA.');
+      await CoreLibrary.log.debug('[BaseFlow] Account bypasses 2FA. Redirected to /lobby/**. Test continues without 2FA.');
       return;
     }
 
     if (pathname.includes('/trial/') && pathname.includes('/dashboard')) {
-      CoreLibrary.log.debug('[BaseFlow] Trial user bypasses 2FA. Redirected to /trial/**/dashboard. Test continues without 2FA.');
+      await CoreLibrary.log.debug('[BaseFlow] Trial user bypasses 2FA. Redirected to /trial/**/dashboard. Test continues without 2FA.');
       return;
     }
 
     if (pathname === '/setup-2fa') {
       if (secret) {
-        CoreLibrary.log.debug('[BaseFlow] Account requires first time 2FA setup. Secret available from /auth/2fa/secret endpoint. Handling setup flow automatically...');
+        await CoreLibrary.log.debug('[BaseFlow] Account requires first time 2FA setup. Secret available from /auth/2fa/secret endpoint. Handling setup flow automatically...');
       } else {
-        CoreLibrary.log.debug('[BaseFlow] Account requires first time 2FA setup. No secret from /auth/2fa/secret endpoint. Will attempt QR code extraction (TODO - not yet implemented).');
+        await CoreLibrary.log.debug('[BaseFlow] Account requires first time 2FA setup. No secret from /auth/2fa/secret endpoint. Will attempt QR code extraction (TODO - not yet implemented).');
       }
       await this.handle2FASetup(secret);
       return;
@@ -170,21 +170,21 @@ export abstract class BaseFlow {
 
     if (pathname === '/verify-2fa') {
       if (secret) {
-        CoreLibrary.log.debug('[BaseFlow] Account requires 2FA verification. Secret available from /auth/2fa/secret endpoint. Will use secret to generate OTP automatically.');
+        await CoreLibrary.log.debug('[BaseFlow] Account requires 2FA verification. Secret available from /auth/2fa/secret endpoint. Will use secret to generate OTP automatically.');
       } else {
-        CoreLibrary.log.debug('[BaseFlow] Account requires 2FA verification. No secret from /auth/2fa/secret endpoint. Will use TwoFAOptions (manual/provided code).');
+        await CoreLibrary.log.debug('[BaseFlow] Account requires 2FA verification. No secret from /auth/2fa/secret endpoint. Will use TwoFAOptions (manual/provided code).');
       }
       await this.handle2FAVerification(twoFAOptions, secret);
       return;
     }
 
     if (pathname === '/account-locked') {
-      CoreLibrary.log.err('Account is locked or password expired. Cannot proceed with login.');
+      await CoreLibrary.log.err('Account is locked or password expired. Cannot proceed with login.');
       throw new Error('Account is locked or password expired. Cannot proceed with login.');
     }
 
     if (pathname === '/login' || pathname.includes('error')) {
-      CoreLibrary.log.err(
+      await CoreLibrary.log.err(
         `Login failed. Check credentials or account status. Current URL: ${currentUrl}`
       );
       throw new Error('Login failed: Invalid credentials or account issue.');
@@ -197,16 +197,16 @@ export abstract class BaseFlow {
 
       let setupSecret = secret;
       if (!setupSecret) {
-        CoreLibrary.log.debug('[BaseFlow] Secret not available from /auth/2fa/secret endpoint for first time setup. Attempting to extract from QR code...');
+        await CoreLibrary.log.debug('[BaseFlow] Secret not available from /auth/2fa/secret endpoint for first time setup. Attempting to extract from QR code...');
         try {
           setupSecret = await setup2FAPage.extractSecretFromQRCode();
-          CoreLibrary.log.debug('[BaseFlow] Successfully extracted secret from QR code.');
+          await CoreLibrary.log.debug('[BaseFlow] Successfully extracted secret from QR code.');
         } catch (error) {
-          CoreLibrary.log.err('[BaseFlow] QR code extraction not yet implemented. First time 2FA setup requires secret from /auth/2fa/secret endpoint or QR code extraction.');
+          await CoreLibrary.log.err('[BaseFlow] QR code extraction not yet implemented. First time 2FA setup requires secret from /auth/2fa/secret endpoint or QR code extraction.');
           throw new Error('First time 2FA setup requires secret from /auth/2fa/secret endpoint or QR code extraction. QR code extraction not yet implemented. Please ensure secret is available from endpoint or wait for QR code extraction implementation.');
         }
       } else {
-        CoreLibrary.log.debug('[BaseFlow] Using secret from /auth/2fa/secret endpoint for first time 2FA setup.');
+        await CoreLibrary.log.debug('[BaseFlow] Using secret from /auth/2fa/secret endpoint for first time 2FA setup.');
       }
 
       await setup2FAPage.setupWithSecret(setupSecret);
@@ -267,16 +267,16 @@ export abstract class BaseFlow {
     const currentUrl = this.page.url();
 
     if (pathname === '/lobby/dashboard' || pathname.startsWith('/lobby/')) {
-      CoreLibrary.log.debug(`[BaseFlow] Authenticated as regular user. Current URL: ${currentUrl}`);
+      await CoreLibrary.log.debug(`[BaseFlow] Authenticated as regular user. Current URL: ${currentUrl}`);
       return;
     }
 
     if (pathname.includes('/trial/') && pathname.includes('/dashboard')) {
-      CoreLibrary.log.debug(`[BaseFlow] Authenticated as trial user. Current URL: ${currentUrl}`);
+      await CoreLibrary.log.debug(`[BaseFlow] Authenticated as trial user. Current URL: ${currentUrl}`);
       return;
     }
 
-    CoreLibrary.log.err(`Session invalid - not authenticated. Current URL: ${currentUrl}, pathname: ${pathname}`);
+    await CoreLibrary.log.err(`Session invalid - not authenticated. Current URL: ${currentUrl}, pathname: ${pathname}`);
     throw new Error('Session invalid - not authenticated');
   }
 
