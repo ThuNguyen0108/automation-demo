@@ -199,7 +199,9 @@ export class APIUtil implements IAPIUtil {
     private async setApiContext(
         proxyDetails: any,
     ): Promise<APIRequestContext> {
-        if (proxyDetails) {
+        // Check if proxyDetails is not empty object
+        // Empty object {} will cause Playwright error: proxy.server: expected string, got undefined
+        if (proxyDetails && !this.isObjEmpty(proxyDetails)) {
             return await request.newContext({ proxy: proxyDetails });
         }
 

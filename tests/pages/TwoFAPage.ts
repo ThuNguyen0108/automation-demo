@@ -26,25 +26,33 @@ export class TwoFAPage extends BasePage {
    */
   async verify(code: string) {
     try {
+      // Fill code input
       await this.qe.ui.fill(this.locator('codeInput'), code);
 
+      // Submit button
       await this.qe.ui.click(this.locator('submitButton'));
 
+      // Wait for network to be idle to ensure redirect has completed
       await this.page.waitForLoadState('networkidle');
 
+      // Wait for pathname to change from /verify-2fa (consistent with BaseFlow approach)
       const pathname = await this.waitForPathnameChange(['/verify-2fa']);
       const currentUrl = this.page.url();
 
+      // Check if pathname matches authenticated paths (consistent with BaseFlow.verifyAuthenticated())
+      // Regular users: /lobby/dashboard or /lobby/**
       if (pathname === '/lobby/dashboard' || pathname.startsWith('/lobby/')) {
         CoreLibrary.log.debug(`[TwoFAPage] Verification successful. Redirected to: ${currentUrl}`);
         return;
       }
 
+      // Trial users: /trial/{affiliateId}/dashboard
       if (pathname.includes('/trial/') && pathname.includes('/dashboard')) {
         CoreLibrary.log.debug(`[TwoFAPage] Verification successful. Redirected to trial dashboard: ${currentUrl}`);
         return;
       }
 
+      // Check if account locked
       if (pathname === '/account-locked' || currentUrl.includes('/account-locked')) {
         CoreLibrary.log.err('Account locked after 2FA verification.');
         throw new Error(
@@ -52,11 +60,14 @@ export class TwoFAPage extends BasePage {
         );
       }
 
+      // Check if still on verification page (invalid code)
       if (pathname === '/verify-2fa') {
         CoreLibrary.log.warning(
           'Still on 2FA verification page after code entry. Code may be invalid.'
         );
+        // Don't throw - let BaseFlow handle (may retry or fail)
       } else {
+        // Other error - unexpected pathname
         CoreLibrary.log.err(`[TwoFAPage] Unexpected pathname after verification: ${pathname}. Current URL: ${currentUrl}`);
         throw new Error(`2FA verification failed. Unexpected redirect to: ${pathname}`);
       }
@@ -68,7 +79,7 @@ export class TwoFAPage extends BasePage {
         throw new Error('2FA verification failed: Code input field not found.');
       }
       if (error.message.includes('Account is locked')) {
-        throw error;
+        throw error; // Re-throw account locked error
       }
       throw error;
     }

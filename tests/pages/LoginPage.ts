@@ -21,65 +21,40 @@ export class LoginPage extends BasePage {
   }
 
   /**
-   * Monitor login API response từ network traffic
-   * Helper method để wrap waitForResponse logic
-   * 
-   * Framework Pattern:
-   * - Sử dụng page.waitForResponse() để monitor network (framework pattern - xem RequestUploadDocumentPage.ts:228-243)
-   * - Pattern: Setup promise TRƯỚC khi perform action để ensure capture được response
-   * 
-   * @returns Promise<Response | null> - Login API response hoặc null nếu timeout
-   */
-  private async waitForLoginResponse(): Promise<any> {
-    return this.page.waitForResponse(
-      async (response) => {
-        const url = response.url();
-        const method = response.request().method();
-        const isLoginResponse = url.includes('/auth/login') && 
-                                method === 'POST' && 
-                                response.ok();
-        
-        // Debug: Log tất cả responses để verify matching logic
-        if (url.includes('/auth/login')) {
-          CoreLibrary.log.debug(`[LoginPage] Detected /auth/login response. URL: ${url}, Method: ${method}, Status: ${response.status()}, Matched: ${isLoginResponse}`);
-        }
-        
-        return isLoginResponse;
-      },
-      { timeout: 10000 }
-    ).catch((error) => {
-      CoreLibrary.log.debug(`[LoginPage] waitForResponse timeout or error: ${error.message || error}`);
-      return null;
-    });
-  }
-
-  /**
-   * Call GET /auth/2fa/secret endpoint để lấy secret
+   * Call POST /auth/2fa/secret endpoint để lấy secret
    * Helper method để wrap APIUtil logic
    * 
    * Framework Pattern:
-   * - Sử dụng qe.api.returnGet() để call API endpoint (framework APIUtil)
+   * - Sử dụng qe.api.returnPost() để call API endpoint (framework APIUtil)
    * 
-   * @param accessToken - Access token từ login response
-   * @param rootOrganisationId - Organisation ID từ login response
-   * @param apiBaseUrl - API base URL
+   * API Endpoint:
+   * - POST https://api-dev.speedydd.com/auth/2fa/secret
+   * - Headers: Content-Type: application/json
+   * - Body: { email: string, password: string }
+   * - Response: { secret: string } (nếu account có 2FA secret)
+   * 
+   * @param email - Email address
+   * @param password - Password
+   * @param apiBaseUrl - API base URL (default: https://api-dev.speedydd.com)
    * @returns Promise<string | null> - Secret hoặc null nếu không có
    */
   private async getSecretFromEndpoint(
-    accessToken: string,
-    rootOrganisationId: string,
-    apiBaseUrl: string
+    email: string,
+    password: string,
+    apiBaseUrl: string = 'https://api-dev.speedydd.com'
   ): Promise<string | null> {
     try {
-      // Call GET /auth/2fa/secret endpoint với headers (sử dụng framework APIUtil)
-      const secretResponse = await this.qe.api.returnGet(
-        `${apiBaseUrl}/auth/2fa/secret`,
-        {
-          'Authorization': `Bearer ${accessToken}`,
-          'took_action_organisation': rootOrganisationId.toString()
+      // Call POST /auth/2fa/secret endpoint với email và password (sử dụng framework APIUtil)
+      const secretResponse = await this.qe.api.returnPost({
+        uri: `${apiBaseUrl}/auth/2fa/secret`,
+        headers: {
+          'Content-Type': 'application/json'
         },
-        {} // params (empty object)
-      ) as any; // Cast to any để access status() và json() methods
+        requestBody: {
+          email: email,
+          password: password
+        }
+      }) as any; // Cast to any để access status() và json() methods
 
       const status = secretResponse.status();
       
@@ -112,17 +87,16 @@ export class LoginPage extends BasePage {
   }
 
   /**
-   * Fill email & password, submit form, monitor API response để extract accessToken và rootOrganisationId,
-   * sau đó call GET /auth/2fa/secret endpoint để lấy secret
+   * Fill email & password, submit form, sau đó call POST /auth/2fa/secret endpoint để lấy secret
    * 
    * Framework Pattern:
    * - Sử dụng qe.ui.* cho UI interactions (framework standard)
-   * - Sử dụng waitForLoginResponse() helper method cho network monitoring (wraps page.waitForResponse)
-   * - Sử dụng getSecretFromEndpoint() helper method để call API endpoint (wraps qe.api.returnGet)
+   * - Sử dụng getSecretFromEndpoint() helper method để call API endpoint (wraps qe.api.returnPost)
    * - Sử dụng CoreLibrary.log.* cho logging (framework standard)
    * 
    * API Endpoint Logic (from @speedydd-apiservices):
-   * - GET /auth/2fa/secret chỉ hoạt động khi AUTOTEST_BYPASS_2FA === "true"
+   * - POST /auth/2fa/secret với body { email, password }
+   * - Endpoint chỉ hoạt động khi AUTOTEST_BYPASS_2FA === "true"
    * - Nếu không có env → 403 Forbidden
    * - Service getTwoFaSecret() luôn return secret (không bao giờ null):
    *   * Nếu user có secret → return secret hiện tại
@@ -133,72 +107,23 @@ export class LoginPage extends BasePage {
    * @returns Object với success flag và secret (nếu có)
    */
   async login(email: string, password: string): Promise<{ success: boolean; secret?: string }> {
-    
-    const responsePromise = this.waitForLoginResponse();
-
     // Perform login (sử dụng framework utils)
     await this.open();
     await this.qe.ui.fill(this.locator('emailInput'), email);
     await this.qe.ui.fill(this.locator('passwordInput'), password);
     await this.qe.ui.click(this.locator('submitButton'));
 
-    const loginResponse = await responsePromise;
-    
-    if (loginResponse) {
-      const responseUrl = loginResponse.url();
-      const responseMethod = loginResponse.request().method();
-      const responseStatus = loginResponse.status();
-      CoreLibrary.log.debug(`[LoginPage] Login API response captured. URL: ${responseUrl}, Method: ${responseMethod}, Status: ${responseStatus}`);
-    } else {
-      CoreLibrary.log.debug('[LoginPage] Login API response not captured. Cannot get accessToken. Test will continue using TwoFAOptions (manual/provided code) if 2FA needed.');
-      await this.page.waitForLoadState('networkidle');
-      return {
-        success: true,
-        secret: undefined
-      };
-    }
+    // Wait for navigation to complete
+    await this.page.waitForLoadState('networkidle');
 
-    try {
-      const loginBody = await loginResponse.json();
-      
-      CoreLibrary.log.debug(`[LoginPage] Login API response body: ${JSON.stringify(loginBody, null, 2)}`);
-      
-      const accessToken = loginBody.accessToken?.token || null;
-      const rootOrganisationId = loginBody.user?.selectedProfile?.organisation?._id || 
-                                loginBody.user?.selectedProfile?.organisation || 
-                                null;
+    // Call POST /auth/2fa/secret endpoint với email và password
+    const apiBaseUrl = this.qe.envProps.get('apiBaseUrl') || 'https://api-dev.speedydd.com';
+    const secret = await this.getSecretFromEndpoint(email, password, apiBaseUrl);
 
-      await this.page.waitForLoadState('networkidle');
-
-      let secret: string | null = null;
-      if (accessToken && rootOrganisationId) {
-        const loginUrl = loginResponse.url();
-        const apiBaseUrl = loginUrl.match(/https?:\/\/[^\/]+/)?.[0] || 
-                          this.qe.envProps.get('apiBaseUrl') || 
-                          'https://api-dev.speedydd.com';
-        
-        secret = await this.getSecretFromEndpoint(accessToken, rootOrganisationId, apiBaseUrl)
-      } else {
-        // Missing accessToken or rootOrganisationId
-        if (!accessToken) {
-          CoreLibrary.log.debug(`[LoginPage] Missing accessToken in login response. Cannot call /auth/2fa/secret endpoint. Test will continue using TwoFAOptions (manual/provided code) if 2FA needed.`);
-        } else {
-          CoreLibrary.log.debug(`[LoginPage] Missing rootOrganisationId in login response. Cannot call /auth/2fa/secret endpoint. Test will continue using TwoFAOptions (manual/provided code) if 2FA needed.`);
-        }
-      }
-
-      return {
-        success: true,
-        secret: secret || "C57E4VZFFB5F252Z" //TODO: temporary hard code during demo
-      };
-    } catch (error: any) {
-      CoreLibrary.log.debug(`[LoginPage] Failed to parse login API response: ${error.message || error}. Cannot get accessToken. Test will continue using TwoFAOptions (manual/provided code) if 2FA needed.`);
-      await this.page.waitForLoadState('networkidle');
-      return {
-        success: true,
-        secret: undefined
-      };
-    }
+    return {
+      success: true,
+      secret: secret || undefined
+    };
   }
 
   /**
