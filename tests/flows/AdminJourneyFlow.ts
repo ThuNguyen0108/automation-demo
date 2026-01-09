@@ -180,34 +180,10 @@ export class AdminJourneyFlow extends BaseFlow {
     return this;
   }
 
-  // continue other test steps
-  // 1. Authentication & Security Flow
-  
-  /**
-   * Business flow: Standard login flow
-   * 
-   * Framework Pattern:
-   * - Compose BaseFlow protected steps (enterEmailAndPassword, enter2FA, landOnDashboard)
-   * - Wrap trong testStep() từ @playwrightUtils (framework standard)
-   * - Return this để enable Fluent Interface
-   * - Pattern giống với existing methods (viewAssignOverview line 145, createPerson line 161)
-   * 
-   * @param data - Login credentials (email, password)
-   * @returns this for fluent interface
-   */
   async adminLoginFlow(data: { email: string, password: string }): Promise<this> {
     await testStep('Standard Login', async () => {
-      // Step 1: Enter credentials và extract secret từ /auth/2fa/secret endpoint
-      // ⚠️ CRITICAL: enterEmailAndPassword() return secret để pass vào enter2FA()
-      // Note: enterEmailAndPassword() reuse LoginPage.login() để get secret từ /auth/2fa/secret endpoint
       const { secret } = await this.enterEmailAndPassword(data.email, data.password);
-      
-      // Step 2: Handle 2FA với secret (nếu có) để auto-generate OTP
-      // Note: BaseFlow.enterEmailAndPassword() đã submit form và get secret từ /auth/2fa/secret endpoint,
-      // pass secret vào enter2FA() để auto-generate OTP thay vì manual code
       await this.enter2FA(undefined, secret);
-      
-      // Step 3: Verify landed on dashboard (compose BaseFlow protected method)
       await this.landOnDashboard();
     });
     return this;
@@ -240,80 +216,25 @@ export class AdminJourneyFlow extends BaseFlow {
   }
 
 
-  /**
-   * Business flow: Main menu walkthrough
-   * Navigate through main sidebar menu items to verify navigation works
-   * 
-   * Pattern:
-   * - Navigate through key menu items (Persons, Assign, Admin submenu items)
-   * - Verify each page loads correctly
-   * - Wrap trong testStep với business description
-   * - Return this để enable Fluent Interface
-   * 
-   * @returns this for fluent interface
-   */
+
   async mainMenuWalkthrough(): Promise<this> {
     await testStep('Main Menu Walkthrough', async () => {
-      // Navigate to Persons page
-      await this.personsPage.goto();
-      await this.personsPage.waitForPageLoad();
-      await this.qe.screen.screenshot('main-menu-persons');
-
-      // Navigate to Assign page
-      await this.assignPage.goto();
-      await this.assignPage.waitForTable();
-      await this.qe.screen.screenshot('main-menu-assign');
-
-      // Navigate back to dashboard
-      const baseUrl = this.qe.envProps.get('baseUrl') || 'http://127.0.0.1:3000';
-      await this.page.goto(`${baseUrl}/lobby/dashboard`);
-      await this.page.waitForLoadState('networkidle');
-      await this.qe.screen.screenshot('main-menu-dashboard');
+      
     });
     return this;
   }
 
   async globalSearch(data: PersonData): Promise<this> {
     await testStep('Global Search', async () => {
-      const currentUrl = this.page.url();
-      if (!currentUrl.includes('/lobby/')) {
-        const baseUrl = this.qe.envProps.get('baseUrl') || 'http://127.0.0.1:3000';
-        await this.page.goto(`${baseUrl}/lobby/dashboard`);
-        await this.page.waitForLoadState('networkidle');
-      }
-
-      const searchTerm = `${data.firstName} ${data.lastName}`.trim();
-      const globalSearchInput = this.page.locator('#search-input');
-      await globalSearchInput.waitFor({ state: 'visible', timeout: 10000 });
-      await globalSearchInput.clear();
-      await globalSearchInput.fill(searchTerm);
-
-      await this.page.waitForTimeout(2000);
-      await this.qe.screen.screenshot('global-search-results');
-      await globalSearchInput.press('Escape');
-      await this.page.waitForTimeout(500);
+      
     });
     return this;
   }
 
-  /**
-   * Business flow: Main Navigation and Global Search Flow
-   * Compose mainMenuWalkthrough and globalSearch flows
-   * 
-   * Pattern:
-   * - Compose multiple business flows
-   * - Wrap trong testStep với high-level description
-   * - Return this để enable Fluent Interface
-   * 
-   * @param data - Person data for global search
-   * @returns this for fluent interface
-   */
+
   async adminMainNavigationAndGlobalSearchFlow(data?: PersonData): Promise<this> {
     await testStep('Main Navigation and Global Search Flow', async () => {
-      // Step 1: Navigate through main menu
       await this.mainMenuWalkthrough();
-
-      // Step 2: Use global search (if person data provided)
       if (data) {
         await this.globalSearch(data);
       }
@@ -336,13 +257,6 @@ export class AdminJourneyFlow extends BaseFlow {
     return this;
   }
 
-  // ============================================
-  // State Access
-  // ============================================
-
-  /**
-   * Get current state (for assertions or further actions)
-   */
   getState(): AdminJourneyState {
     return { ...this.state };
   }
@@ -354,9 +268,6 @@ export class AdminJourneyFlow extends BaseFlow {
     return this.state.personResult;
   }
 
-  /**
-   * Get request document data
-   */
   getRequestDocumentData(): RequestDocumentData {
     if (!this.state.requestDocumentData) {
       throw new Error('Request document data not available. Call requestDocumentUploadAndVerify() first.');

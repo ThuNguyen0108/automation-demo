@@ -3,17 +3,11 @@ import { IPlaywrightLibrary, CoreLibrary } from '@core';
 import { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 
-/**
- * PersonDetailsPage - Page object cho Person Details page
- * 
- * Reference: speedydd-automation/src/pages/PersonDetailsPageWeb.ts
- */
 export class PersonDetailsPage extends BasePage {
   protected getPropertiesFile(): string {
     return 'persons';
   }
   
-  // Timeout constants
   private readonly TIMEOUTS = {
     short: 2000,
     medium: 5000,
@@ -35,17 +29,12 @@ export class PersonDetailsPage extends BasePage {
     multipleEmail: '[class*="MultipleEmail"]',
   };
   
-  // Selectors for email input detection
   private readonly EMAIL_INPUT_SELECTORS = [
     'input[name="email"][type="email"]',
     'input[name="email"]',
     'input[type="email"]',
   ];
   
-  /**
-   * Navigate to Person Details page
-   * @param personId - The person ID
-   */
   async goto(personId: string) {
     await CoreLibrary.log.step(`Navigating to person details page: ${personId}`);
     await super.goto(`/lobby/edit-person/${personId}`);
@@ -54,19 +43,10 @@ export class PersonDetailsPage extends BasePage {
     await CoreLibrary.log.debug(`Successfully navigated to person details page: ${personId}`);
   }
   
-  /**
-   * Helper: Safely wait for load state (ignore timeout)
-   */
   private async safeWaitForLoadState() {
-    await this.page.waitForLoadState('networkidle', { timeout: this.TIMEOUTS.long }).catch(() => {
-      // Ignore timeout
-    });
+    await this.page.waitForLoadState('networkidle', { timeout: this.TIMEOUTS.long }).catch(() => {});
   }
   
-  /**
-   * Navigate to the Documents tab
-   * URL pattern: /lobby/edit-person/[personId]?tab=uploadfiles
-   */
   async navigateToDocumentsTab() {
     await CoreLibrary.log.step('Navigating to Documents tab');
     if (this.page.url().includes('tab=uploadfiles')) {

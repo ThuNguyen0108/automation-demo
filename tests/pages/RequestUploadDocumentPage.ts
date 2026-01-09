@@ -5,20 +5,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 
-/**
- * RequestUploadDocumentPage - Page object cho Request Upload Document page
- * 
- * This page is accessed by recipients via email link:
- * /request-upload-document/[requestDocumentId]
- * 
- * Reference: speedydd-automation/src/pages/RequestUploadDocumentPageWeb.ts
- */
 export class RequestUploadDocumentPage extends BasePage {
   protected getPropertiesFile(): string {
-    return 'persons'; // Reuse persons.properties as it contains relevant locators
+    return 'persons';
   }
   
-  // Timeout constants
   private readonly TIMEOUTS = {
     short: 2000,
     medium: 5000,
@@ -40,7 +31,6 @@ export class RequestUploadDocumentPage extends BasePage {
     successClass: '[class*="success"], [class*="complete"]',
   };
   
-  // Success message fallback selectors
   private readonly SUCCESS_FALLBACK_SELECTORS = [
     'text=/Your document has been uploaded and submitted successfully/i',
     'text=/Thank you/i',
